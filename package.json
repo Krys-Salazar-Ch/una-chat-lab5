@@ -1,0 +1,31 @@
+{
+  "name": "una-chat",
+  "version": "1.0.0",
+  "description": "UNA Chat - Laboratorio 5 Seguridad Informática",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "jest tests/unit",
+    "test:unit": "jest tests/unit --verbose",
+    "test:integration": "jest tests/integration --runInBand --env=node --verbose",
+    "test:e2e": "playwright test --project=chromium"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/tests/e2e/"
+    ]
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "jquery": "^3.7.1",
+    "socket.io": "^4.8.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "jest": "^30.5.2",
+    "socket.io-client": "^4.8.4",
+    "supertest": "^7.3.1"
+  }
+}
