@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+.env
+.env.*
+!.env.example
+.git
+.github
+tests
+test-results
+playwright-report
+blob-report
+playwright
+artillery
+*.md

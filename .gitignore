@@ -3,3 +3,11 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+
+# secretos
+.env
+.env.*
+!.env.example
+
+# reportes de Artillery
+artillery/reporte*.json

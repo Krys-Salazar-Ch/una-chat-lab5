@@ -1,0 +1,17 @@
+# Uso:  docker compose up --build
+# Las credenciales de Grafana se leen del archivo .env (no se suben a GitHub).
+services:
+  una-chat:
+    build: .
+    container_name: una-chat
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      PORT: "3000"
+      OTEL_SERVICE_NAME: una-chat
+      # entorno de origen: local; runtime para distinguirlo de la parte 2
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=local,deployment.environment.name=local,container.runtime=docker
+    init: true          # reenvía Ctrl+C / docker stop al proceso para vaciar la telemetría
+    restart: unless-stopped

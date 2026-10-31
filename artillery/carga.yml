@@ -1,0 +1,30 @@
+# Prueba de carga local contra UNA Chat en Docker (parte 3.2)
+# Ejecutar:  artillery run artillery/carga.yml --output artillery/reporte.json
+config:
+  target: "http://localhost:3000"   # contenedor local, NO Render
+  phases:
+    - name: "5 solicitudes por segundo durante 60 s"
+      duration: 60
+      arrivalRate: 5                  # 5 usuarios virtuales nuevos por segundo
+  http:
+    timeout: 10                       # segundos antes de contar un ETIMEDOUT
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      # Si CHAT_API_TOKEN tiene valor, Artillery lo toma del entorno (no se escribe aquí)
+      Authorization: "Bearer {{ $env.CHAT_API_TOKEN }}"
+  plugins:
+    expect: {}
+
+scenarios:
+  - name: "Enviar un mensaje al chat"
+    flow:
+      # una sola solicitud por usuario virtual, sin bucles ni pausas
+      - post:
+          url: "/api/mensajes"
+          json:
+            nombre: "artillery-vu"
+            mensaje: "Mensaje de carga {{ $randomString(8) }}"
+            color: "#3366CC"
+          expect:
+            - statusCode: 201

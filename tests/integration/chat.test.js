@@ -117,3 +117,31 @@ describe('Evento Socket.IO Evento-Mensaje-Server + una-lib', () => {
     expect(resp.mensaje).not.toContain('<img');
   });
 });
+
+describe('Monitoreo: /health y API HTTP de mensajes', () => {
+  test('GET /health responde 200 con status ok', async () => {
+    const res = await request(app).get('/health');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+  });
+
+  test('POST /api/mensajes procesa con una-lib y responde 201', async () => {
+    const res = await request(app)
+      .post('/api/mensajes')
+      .send({ nombre: 'Artillery', mensaje: 'hola <b>UNA</b>', color: '#1A2B3C' });
+    expect(res.status).toBe(201);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(res.body.tipo).toBe('texto');
+    expect(res.body.respuesta.mensaje).not.toContain('<b>');
+  });
+
+  test('POST /api/mensajes sin mensaje responde 400', async () => {
+    const res = await request(app).post('/api/mensajes').send({ nombre: 'x' });
+    expect(res.status).toBe(400);
+  });
+
+  test('/debug-sentry no existe si SENTRY_TEST_ROUTE no está activo', async () => {
+    const res = await request(app).get('/debug-sentry');
+    expect(res.status).toBe(404);
+  });
+});

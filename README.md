@@ -3,6 +3,9 @@
 Chat con Express + Socket.IO. Esta versión corrige la vulnerabilidad de inyección de scripts (XSS),
 permite compartir imágenes y videos de forma segura e incluye tres suites de pruebas.
 
+## Monitoreo
+Ver [MONITOREO.md](MONITOREO.md): Cronitor y Sentry (Render), OpenTelemetry → Grafana Cloud (local), Docker y Artillery.
+
 ## Requisitos
 - Node.js 18 o superior
 

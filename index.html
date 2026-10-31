@@ -79,6 +79,12 @@
             window.scrollTo(0, document.body.scrollHeight);
         });
 
+        // error al procesar el mensaje propio (por ejemplo, el fallo controlado)
+        socket.on('Evento-Error-Server', function(texto){
+            $('<li>').attr('data-tipo', 'error').css('color', '#b00020').text('⚠ ' + texto).appendTo('#messages');
+            window.scrollTo(0, document.body.scrollHeight);
+        });
+
       });
     </script>
   </body>
