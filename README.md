@@ -6,6 +6,10 @@ permite compartir imágenes y videos de forma segura e incluye tres suites de pr
 ## Monitoreo
 Ver [MONITOREO.md](MONITOREO.md): Cronitor y Sentry (Render), OpenTelemetry → Grafana Cloud (local), Docker y Artillery.
 
+## Login con Auth0 y secreto en Supabase Vault (laboratorio 8)
+Ver [LAB8-VAULT.md](LAB8-VAULT.md). El servidor lee el Client Secret de Auth0 desde Supabase Vault al arrancar
+(`server/vault.js`) y protege la sala con Auth0 (`server/auth.js`). Sin `AUTH0_DOMAIN`/`AUTH0_CLIENT_ID` el chat queda abierto.
+
 ## Requisitos
 - Node.js 18 o superior
 

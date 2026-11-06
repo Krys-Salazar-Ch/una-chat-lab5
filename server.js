@@ -9,11 +9,20 @@ var crypto = require('crypto');
 var express = require('express');
 var validation = require('./libs/unalib');
 var { tracer, metricas, log, conSpan, idsTrazaActiva, SpanStatusCode } = require('./libs/telemetria');
+var { createAuth } = require('./server/auth');
+var vault = require('./server/vault');
 
 var app = express();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var port = process.env.PORT || 3000;
+
+// Render (y cualquier proxy) termina TLS antes del servidor.
+app.set('trust proxy', 1);
+
+// Auth0: activo solo si AUTH0_DOMAIN y AUTH0_CLIENT_ID tienen valor.
+// El Client Secret se lee de Supabase Vault al arrancar (ver iniciar()).
+var auth = createAuth();
 
 // Fallo controlado (partes 2 y 3): solo si ENABLE_FAULT_INJECTION=true en el .env local.
 var FALLO_ACTIVO = process.env.ENABLE_FAULT_INJECTION === 'true';
@@ -46,8 +55,18 @@ function rutaSinHandler(p) {
   return 'sin_ruta';
 }
 
-// root: presentar html
+// Inicio de sesión con Auth0: /auth/config, /auth/login, /auth/callback, /auth/logout, /auth/me
+app.use(auth.router);
+
+// root: con login activo se entra por /sala; sin login, el chat queda abierto
 app.get('/', function (req, res) {
+  if (auth.config.enabled) return res.redirect('/sala');
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// sala del chat: 401 si no hay sesión
+app.get('/sala', auth.requireSession, function (req, res) {
+  res.set('cache-control', 'no-store');
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
@@ -120,11 +139,26 @@ function extraerTexto(msg) {
   }
 }
 
+// Socket.IO solo acepta conexiones con sesión cuando el login está activo
+io.use(auth.socketMiddleware);
+
+// Con sesión, el nombre del mensaje es el del usuario de Auth0 (no se puede suplantar).
+function conNombreDeSesion(msg, user) {
+  if (!user) return msg;
+  try {
+    var obj = typeof msg === 'string' ? JSON.parse(msg) : Object.assign({}, msg);
+    obj.nombre = user.name;
+    return JSON.stringify(obj);
+  } catch (e) {
+    return msg;
+  }
+}
+
 // escuchar una conexión por socket
 io.on('connection', function (socket) {
   socket.on('Evento-Mensaje-Server', function (msg) {
     try {
-      procesarMensaje(msg, 'socket');
+      procesarMensaje(conNombreDeSesion(msg, socket.data.user), 'socket');
     } catch (err) {
       // solo quien envió el mensaje ve el error
       socket.emit('Evento-Error-Server', 'No se pudo procesar el mensaje: ' + err.message);
@@ -183,10 +217,50 @@ app.use(function (err, req, res, next) {
 
 // Solo escucha el puerto si se ejecuta directamente (npm start).
 // Las pruebas de integración importan app/http/io y abren su propio puerto.
-if (require.main === module) {
+// ---------- Arranque: leer el secreto de Vault antes de abrir el puerto ----------
+async function obtenerClientSecret() {
+  if (process.env.VAULT_DATABASE_URL) {
+    var secreto = await vault.leerClientSecret();
+    console.log('[auth] Client Secret leído desde Supabase Vault (' +
+      vault.describirConexion(process.env.VAULT_DATABASE_URL) + ', longitud ' + secreto.length + ')');
+    return secreto;
+  }
+  // Solo para la transición del laboratorio: se borra de Render después del primer login.
+  if (process.env.AUTH0_CLIENT_SECRET) {
+    console.warn('[auth] VAULT_DATABASE_URL vacía: usando AUTH0_CLIENT_SECRET del entorno (temporal)');
+    return process.env.AUTH0_CLIENT_SECRET;
+  }
+  throw new Error('Login activo pero no hay VAULT_DATABASE_URL para leer el Client Secret');
+}
+
+async function iniciar() {
+  if (auth.config.enabled) {
+    auth.setClientSecret(await obtenerClientSecret());
+    try {
+      var p = await auth.probarSecreto();
+      if (p.secretoAceptado) {
+        console.log('[auth] prueba de arranque: HTTP ' + p.status + ' ' + p.error + ' (esperado: Auth0 aceptó el secreto)');
+      } else {
+        console.error('[auth] prueba de arranque: HTTP ' + p.status + ' ' + (p.error || '') +
+          (p.error === 'invalid_client' ? ' → Vault no tiene el secreto de esta aplicación' : ''));
+      }
+    } catch (err) {
+      console.error('[auth] prueba de arranque sin respuesta de Auth0: ' + err.message);
+    }
+  } else {
+    console.log('[auth] login desactivado (AUTH0_DOMAIN o AUTH0_CLIENT_ID vacíos): el chat queda abierto');
+  }
+
   http.listen(port, function () {
     console.log('listening on *:' + port);
-    log.info('UNA Chat iniciado', { puerto: Number(port), fallo_controlado: FALLO_ACTIVO });
+    log.info('UNA Chat iniciado', { puerto: Number(port), fallo_controlado: FALLO_ACTIVO, login: auth.config.enabled });
+  });
+}
+
+if (require.main === module) {
+  iniciar().catch(function (err) {
+    console.error('[arranque] ' + err.message);
+    process.exit(1);
   });
 }
 
