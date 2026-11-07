@@ -22,5 +22,7 @@ module.exports = defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: true,
     timeout: 30000,
+    // las pruebas E2E usan el chat abierto aunque .env tenga valores de Auth0
+    env: { AUTH0_DOMAIN: '', AUTH0_CLIENT_ID: '' },
   },
 });

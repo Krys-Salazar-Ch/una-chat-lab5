@@ -17,9 +17,18 @@
       #nombre, #m { display: inline-block;}
       #m {width: 69%; margin-right: 4px;}
       #nombre {width: 20%}
+      #sesion { display: none; position: sticky; top: 0; z-index: 1; background: #00205b; color: #fff; padding: 8px 10px; align-items: center; gap: 12px; }
+      #sesion.activa { display: flex; }
+      #sesion #usuario { font-weight: bold; flex: 1; }
+      #sesion a { color: #fff; background: #c8102e; padding: 6px 12px; border-radius: 4px; text-decoration: none; }
     </style>
   </head>
   <body>
+    <header id="sesion" aria-label="Sesión">
+      <span>UNA Chat · Sala</span>
+      <span id="usuario"></span>
+      <a id="cerrar-sesion" href="/auth/logout">Cerrar sesión</a>
+    </header>
     <ul id="messages" aria-label="Mensajes"></ul>
     <form action="">
       <input id="nombre" autocomplete="off" placeholder="Username" aria-label="Usuario"/>
@@ -42,8 +51,30 @@
         return color;
      }
 
+      // Con login activo (Auth0), muestra el usuario y usa su nombre en los mensajes.
+      function cargarSesion() {
+        return fetch('/auth/me', { credentials: 'same-origin', headers: { accept: 'application/json' } })
+          .then(function (r) {
+            if (r.status === 401) { window.location.href = '/auth/login'; return null; }
+            return r.json();
+          })
+          .catch(function () { return { enabled: false }; });
+      }
+
       $(function () {
+       cargarSesion().then(function (sesion) {
+        if (sesion === null) return;
+        if (sesion.enabled && sesion.user) {
+          $('#usuario').text(sesion.user.name);
+          $('#sesion').addClass('activa');
+          $('#nombre').val(sesion.user.name).prop('readonly', true);
+        }
+
         var socket = io();
+
+        socket.on('connect_error', function (err) {
+          if (err && err.message === 'No autorizado') window.location.href = '/auth/login';
+        });
 
         // emite evento al servidor
         $('form').submit(function(){
@@ -85,6 +116,7 @@
             window.scrollTo(0, document.body.scrollHeight);
         });
 
+       });
       });
     </script>
   </body>

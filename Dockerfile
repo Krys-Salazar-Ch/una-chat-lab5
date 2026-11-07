@@ -11,6 +11,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 # Código de la aplicación
 COPY server.js instrument.js otel.js index.html ./
 COPY libs ./libs
+COPY server ./server
 COPY public ./public
 
 # Usuario sin privilegios
